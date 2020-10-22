@@ -1,3 +1,5 @@
+CoffeeNodes = require("coffeescript/lib/coffeescript/nodes")
+
 module.exports = class NoImplicitReturns
 
   rule:
@@ -7,6 +9,16 @@ module.exports = class NoImplicitReturns
     description: 'Checks for explicit returns in multi-line functions'
 
   type: (node) -> node.constructor.name
+
+  # Function to detect last non-comment line of code
+  # Derived from Coffeescript@1.4, since this was removed in Coffeescript@2
+  _lastNonComment: (list) ->
+    i = list.length
+    while i--
+      if not (list[i] instanceof CoffeeNodes.LineComment or list[i] instanceof CoffeeNodes.HereComment)
+        return list[i]
+
+    return null
 
   ###*
    * Determines if a code block ends with a pure statement. If it does not,
@@ -20,7 +32,7 @@ module.exports = class NoImplicitReturns
 
     # Ignore empty functions.
     expressions = code.body.expressions
-    lastExpr = code.body.lastNonComment expressions
+    lastExpr = @_lastNonComment expressions
     if not lastExpr?
       return
 
@@ -47,7 +59,7 @@ module.exports = class NoImplicitReturns
           message: 'Explicit return not required for single-line function'
           level: 'warn'
           lineNumber: firstLine
-          lineNumberEnd: firstLine
+          lineNumberEnd: lastLine
 
       # Single-expression function that spans multiple lines with a leading newline.
       if firstLine != lastLine and not isPureStatement and firstLine != lastExprLine
@@ -55,7 +67,7 @@ module.exports = class NoImplicitReturns
           message: 'Remove leading newline or add explicit return'
           context: code.variable
           lineNumber: firstLine
-          lineNumberEnd: firstLine
+          lineNumberEnd: lastLine
     return
 
   ###*
